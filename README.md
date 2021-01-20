@@ -1,4 +1,4 @@
-Series of self-notes relating to Poudriere.
+Series of self-notes/scripts relating to Poudriere.
 
 - [SETUP](SETUP.md)
-- [SCRIPTS](scripts/SCRIPTS.md)
+- [SCRIPTS](SCRIPTS.md)
