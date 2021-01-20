@@ -1,0 +1,139 @@
+#!/bin/sh
+PROG=${0##*/}
+LOGFILE=$(mktemp /tmp/build.XXXXXX)
+#
+# Utilitiy functions
+#
+tm_opt() { tmux set-option -t "$PROG" "$@" 2> /dev/null; }
+#
+# Arguments/flags
+#
+. /usr/local/etc/pdt/Environment
+PORT=
+BUILDER=$_DEFAULT_BUILDER
+PORTDIR=$_DEFAULT_PORTDIR
+REPORTDIR=$_DEFAULT_REPORTDIR
+TREE=$_DEFAULT_TREE
+REPORT=$_DEFAULT_REPORT
+INTERACTIVE=$_DEFAULT_INTERACTIVE
+CONFIG=$_DEFAULT_CONFIG
+BULK=$_DEFAULT_BULK
+usage()
+{
+cat <<EOF
+usage: $PROG [-p category/port] [-b builder] [-t tree] [-d port dir] [-g report dir] [-ricu]
+
+Arguments:
+	-p 	-- Target package
+	-b	-- Target builder ($BUILDER)
+	-t	-- Target ports tree ($TREE)
+	-d	-- Target port directory ($PORTDIR)
+	-g	-- Target report directory ($REPORTDIR)
+	
+Flags:
+	-r	-- Generate report ($REPORT)
+	-i	-- Interactive shell ($INTERACTIVE)
+	-c      -- Configure package before build ($CONFIG)
+	-u 	-- Bulk build ($BULK)
+EOF
+	exit 1
+}
+#
+# Parse command-line flags
+#
+while getopts p:b:t:d:g:ricuh flag
+do
+	case "$flag" in
+		# Arguments
+		p) PORT="$OPTARG" ;;
+		b) BUILDER="$OPTARG" ;;
+		t) TREE="$OPTARG" ;;
+		d) PORTDIR="$OPTARG" ;;
+		g) REPORTDIR="$OPTARG" ;;
+		# Flags
+		r) REPORT=1 ;;
+		i) INTERACTIVE=1 ;;
+		c) CONFIG=1 ;;
+		u) BULK=1 ;;
+		# Default
+		h|*) usage ;;
+	esac
+done
+CMDFLAGS=testport
+[ "$INTERACTIVE" = 1 ] && CMDFLAGS="${CMDFLAGS} -i"
+[ "$CONFIG" = 1 ] && CMDFLAGS="${CMDFLAGS} -c"
+[ "$BULK" = 1 ] && CMDFLAGS=$(echo "${CMDFLAGS}" | sed 's/testport/bulk/')
+#
+#
+#
+[ -z "$PORT" ] && usage
+[ ! -d "$PORTDIR/$PORT" ] && die "Port '$PORT' does not exist"
+#
+# Package information
+#
+port_val() { make -C"$PORTDIR/$PORT" -V"$1"; }
+VERSION=$(port_val DISTVERSION)
+MAINTAINER=$(port_val MAINTAINER)
+STATUS="Package: $PORT@$VERSION <$MAINTAINER>"
+#
+#
+#
+tmux new -d -s "$PROG"
+tm_opt pane-border-status bottom
+tm_opt pane-active-border-style fg=black,bg=red
+tm_opt pane-border-format "[ $STATUS | Phase: pending ]"
+tm_opt status off
+[ -f "$LOGFILE" ] && rm -f "$LOGFILE"
+tmux send-key -t "$PROG" "poudriere $CMDFLAGS -j $BUILDER -p $TREE $PORT | tee $LOGFILE" Enter
+#
+#
+#
+while :
+do
+	data=$(poudriere status -H)
+	current=$(echo "$data" | awk '{print $7}')
+	total=$(echo "$data" | awk '{print $6}')
+	time=$(echo "$data" | awk '{print $12}')
+	status="Builder: $BUILDER  Queue: $current/$total  Time: $time"
+	
+	if grep -q "Unmounting file systems" "$LOGFILE"; then
+		time=$(awk '/^build time/{print $3}' "$LOGFILE")
+		tm_opt pane-border-format "[ $STATUS | Phase: finished | Builder: $BUILDER  Time: $time ]"
+		if [ "$REPORT" = 1 ]; then
+			jailversion=$(poudriere jail -j "$BUILDER" -i | awk '/Jail version:/{print $3}') 
+			jailarch=$(poudriere jail -j "$BUILDER" -i | awk '/Jail arch:/{print $3}')
+			pkgname=$(port_val PKGNAME)
+			pkgdir="$REPORTDIR/$pkgname"
+			mkdir -p "$pkgdir"
+cat <<EOF >> "$pkgdir/summary"
+$PORT: Update to $VERSION
+
+Changelog:
+ * [change me]
+
+QA:
+ * portlint: OK (looks fine).
+ * testport: OK (poudriere: $jailversion, $jailarch).
+
+MFH: <Yes/No> (<reason>, <merge to quarterly branch>).
+EOF
+			cd "$PORTDIR" && svn diff "$PORT" > "$pkgdir/$pkgname.diff"
+			cp "$LOGFILE" "$pkgdir/build.log"
+		fi
+		rm -f "$LOGFILE"
+		break
+	fi
+
+	phase=$(awk '/phase: /{print $2}' "$LOGFILE" | tail -1 | sed '/[^a-zA-Z0-9-]/d')
+	if [ -z "${phase}" ]; then
+		phase=pending
+	fi
+
+	tm_opt pane-border-format "[ $STATUS | Phase: $phase | $status ]"
+
+	sleep 1
+done &
+#
+#
+#
+tmux attach -t "$PROG"

@@ -1,0 +1,24 @@
+PREFIX?=	/usr/local
+SBIN=		${PREFIX}/sbin
+ETC=		${PREFIX}/etc
+CFGDIR=		${ETC}/pdt
+
+SCRIPTS=	Build-Pkg Port-Mgmt
+CONFIG=		Environment
+
+default: install
+
+install:
+.for SCRIPT in ${SCRIPTS}
+	install -m 555 ${SCRIPT} ${SBIN}
+.endfor
+	mkdir -p ${CFGDIR}
+	install -m 644 ${CONFIG} ${CFGDIR}
+
+deinstall:
+.for SCRIPT in ${SCRIPTS}
+	rm -f ${SBIN}/${SCRIPT}
+.endfor
+	rm -rf ${CFGDIR}
+
+.PHONY: default install deinstall

@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Default Command-line options (change me)
+#
+_DEFAULT_BUILDER=releng-122-amd64
+_DEFAULT_PORTDIR=/usr/ports-trunk
+_DEFAULT_REPORTDIR=$_DEFAULT_PORTDIR/.report
+_DEFAULT_TREE=ports-trunk
+# Build-Pkg
+_DEFAULT_REPORT=0
+_DEFAULT_INTERACTIVE=0
+_DEFAULT_CONFIG=0
+_DEFAULT_BULK=0
+# Port-Mgmt
+_DEFAULT_PORTCLEAN=0
+_DEFAULT_PORTSTAT=0
+_DEFAULT_PORTUP=0
+_DEFAULT_PORTLOG=0
+#
+# Utilitiy functions
+#
+die() { echo "$PROG:" "$@"; exit 1; }
