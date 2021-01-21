@@ -105,7 +105,7 @@ do
 			pkgname=$(port_val PKGNAME)
 			pkgdir="$REPORTDIR/$pkgname"
 			mkdir -p "$pkgdir"
-cat <<EOF >> "$pkgdir/summary"
+cat <<EOF > "$pkgdir/summary"
 $PORT: Update to $VERSION
 
 Changelog:
