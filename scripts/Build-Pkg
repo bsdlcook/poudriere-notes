@@ -99,7 +99,7 @@ do
 	time=$(echo "$data" | awk '{print $12}')
 	status="Builder: $BUILDER  Queue: $current/$total  Time: $time"
 	
-	if grep -q "Unmounting file systems" "$LOGFILE"; then
+	if grep -q "Unmounting file systems" "$LOGFILE" 2> /dev/null; then
 		time=$(awk '/^build time/{print $3}' "$LOGFILE")
 		tm_opt pane-border-format "[ $STATUS | Phase: finished | Builder: $BUILDER  Time: $time ]"
 		if [ "$REPORT" = 1 ]; then
@@ -127,7 +127,7 @@ EOF
 		break
 	fi
 
-	phase=$(awk '/phase: /{print $2}' "$LOGFILE" | tail -1 | sed '/[^a-zA-Z0-9-]/d')
+	phase=$(awk '/phase: /{print $2}' "$LOGFILE" 2> /dev/null | tail -1 | sed '/[^a-zA-Z0-9-]/d')
 	if [ -z "${phase}" ]; then
 		phase=pending
 	fi
