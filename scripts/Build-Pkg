@@ -18,10 +18,11 @@ REPORT=$_DEFAULT_REPORT
 INTERACTIVE=$_DEFAULT_INTERACTIVE
 CONFIG=$_DEFAULT_CONFIG
 BULK=$_DEFAULT_BULK
+TMUX=$_DEFAULT_TMUX
 usage()
 {
 cat <<EOF
-usage: $PROG [-p category/port] [-b builder] [-t tree] [-d port dir] [-g report dir] [-ricu]
+usage: $PROG [-p category/port] [-b builder] [-t tree] [-d port dir] [-g report dir] [-ricux]
 
 Arguments:
 	-p 	-- Target package
@@ -35,13 +36,14 @@ Flags:
 	-i	-- Interactive shell ($INTERACTIVE)
 	-c      -- Configure package before build ($CONFIG)
 	-u 	-- Bulk build ($BULK)
+	-x	-- Open tmux after build has started ($TMUX)
 EOF
 	exit 1
 }
 #
 # Parse command-line flags
 #
-while getopts p:b:t:d:g:ricuh flag
+while getopts p:b:t:d:g:ricuxh flag
 do
 	case "$flag" in
 		# Arguments
@@ -55,6 +57,7 @@ do
 		i) INTERACTIVE=1 ;;
 		c) CONFIG=1 ;;
 		u) BULK=1 ;;
+		x) TMUX=1 ;;
 		# Default
 		h|*) usage ;;
 	esac
@@ -136,4 +139,4 @@ done &
 #
 #
 #
-tmux attach -t "$PROG"
+[ "$TMUX" = 1 ] && tmux attach -t "$PROG"
