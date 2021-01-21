@@ -38,7 +38,7 @@ That's it.
 ### [Build-Pkg](scripts/Build-Pkg)
 
 ```sh
-usage: Build-Pkg [-p category/port] [-b builder] [-t tree] [-d port dir] [-g report dir] [-ricu]
+usage: Build-Pkg [-p category/port] [-b builder] [-t tree] [-d port dir] [-g report dir] [-ricux]
 
 Arguments:
 	-p 	-- Target package
@@ -46,6 +46,7 @@ Arguments:
 	-t	-- Target ports tree
 	-d	-- Target port directory
 	-g	-- Target report directory
+	-x	-- Open tmux after build has started
 
 Flags:
 	-r	-- Generate report
