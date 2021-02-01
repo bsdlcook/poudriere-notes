@@ -62,6 +62,7 @@ do
 		h|*) usage ;;
 	esac
 done
+[ -z $(command -v tmux) ] && die "tmux not installed"
 CMDFLAGS=testport
 [ "$INTERACTIVE" = 1 ] && CMDFLAGS="${CMDFLAGS} -i"
 [ "$CONFIG" = 1 ] && CMDFLAGS="${CMDFLAGS} -c"
