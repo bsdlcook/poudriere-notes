@@ -31,18 +31,17 @@ RESOLV_CONF=/etc/resolv.conf
 BASEFS=/usr/local/poudriere
 USE_PORTLINT=yes
 USE_TMPFS=yes
-DISTFILES_CACHE=/usr/ports-main/distfiles
+DISTFILES_CACHE=/usr/local/poudriere/ports/default/distfiles
 RESTRICT_NETWORKING=no
 ALLOW_MAKE_JOBS=yes
 BUILDER_HOSTNAME=inferno
-PRIORITY_BOOST="llvm* rust* gcc*"
+PRIORITY_BOOST="llvm* rust* gcc* chromium*"
 ```
 
 ### Ports repository
 
 ```sh
-# mkdir -p /usr/ports-main
-# poudriere ports -c -p ports-main -M /usr/ports-main -m svn+https
+# poudriere ports -c -m svn+https
 ```
 
 ### Poudriere jails
@@ -71,13 +70,13 @@ You have one of two options when building one/many port(s).
 For a more detailed clarification please refer to **poudriere(8)**.
 
 ```sh
-# poudriere testport -j rel-122-amd64 -p ports-main devel/gh
+# poudriere testport -j rel-122-amd64 devel/gh
 ```
 
-By using the examples above, this will build the port **devel/gh** using the jail **rel-122-amd64** (12.2-RELEASE amd64) using the **ports-main** tree. You can also optionally pass the -i (interactive) flag that drops you to a shell inside the jail post-build, allowing you to freely test the port to your hearts desire.
+By using the examples above, this will build the port **devel/gh** using the jail **rel-122-amd64** (12.2-RELEASE amd64) using the **default** tree. You can also optionally pass the -i (interactive) flag that drops you to a shell inside the jail post-build, allowing you to freely test the port to your hearts desire.
 
 ```sh
-# poudriere bulk -j rel-122-amd64 -p ports-main devel/gh audio/spotify-tui
+# poudriere bulk -j rel-122-amd64 devel/gh audio/spotify-tui
 ```
 
 This will build both **devel/gh** and **audio/spotify-tui**, commiting those packages to the custom package repository for installation. There is no limit on how many ports you pass as arguments.
