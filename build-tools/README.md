@@ -23,7 +23,7 @@ little easier. Refer to the [manpage](#manpage) and
 ## Configuration
 
 Before properly using the scripts in conjunction with Poudriere, it's assumed
-everything is ready to go. If not, refer to the [getting started guide](README.md).
+everything is ready to go. If not, refer to the [getting started guide](../README.md).
 
 You will notice a [perl module](config.pm) that defines the default
 builder, ports tree and other default values for commands. Update this
