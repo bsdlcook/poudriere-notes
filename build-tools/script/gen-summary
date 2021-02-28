@@ -1,0 +1,13 @@
+#!/bin/sh
+summary=$(mktemp /tmp/summary.XXXXX)
+cat <<EOF >> $summary
+${PORTNAME}: Update to ${PORTVERSION}
+Summary:
+Changes: [CHANGELOG]
+Test Plan:
+QA:
+ * portlint: OK (looks fine).
+ * testport: OK (poudriere: ${BUILDERVERSION}, ${BUILDERARCH}). 
+MFH: [Yes/No] ([REASON]).
+EOF
+echo "=> $summary"

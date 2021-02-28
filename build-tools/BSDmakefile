@@ -1,0 +1,43 @@
+PROG?=		build-tools
+CONF=		config.pm
+SCRIPT?=	script
+SRC=		build-pkg
+
+PREFIX?=	/usr/local
+ETC=		${PREFIX}/etc
+SBIN=		${PREFIX}/sbin
+CFG=		${ETC}/${PROG}
+SHARE=		${PREFIX}/share/${PROG}
+
+default: 
+	@echo "Targets: install, deinstall, format"
+
+PERMS?=		500
+install:
+.for DIR in ${CFG} ${SHARE}
+	mkdir -p ${DIR}
+.endfor
+	install -m ${PERMS} ${SCRIPT}/* ${SHARE}
+	install -m ${PERMS} ${CONF} ${CFG}
+.for BIN in ${SRC}
+	install -m ${PERMS} ${BIN} ${SBIN}
+.endfor
+
+deinstall:
+.for DIR in ${CFG} ${SHARE}
+	rm -rf ${DIR}
+.endfor
+.for BIN in ${SRC}
+	rm -f ${SBIN}/${BIN}
+.endfor
+
+format: 
+.if ! exists(${PREFIX}/bin/perltidy)
+.error "perltidy not found: pkg install p5-Test-PerlTidy"
+.endif
+.for BIN in ${SRC} ${CONF}
+	perltidy -b ${BIN}
+	@rm -f ${BIN}.bak ${BIN}.tdy
+.endfor
+
+.PHONY: default install deinstall format

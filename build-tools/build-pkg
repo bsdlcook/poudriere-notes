@@ -1,0 +1,375 @@
+#!/usr/bin/env perl
+# build-pkg
+# Written by Lewis Cook <lcook@FreeBSD.org>
+#
+# This script is a build wrapper around poudriere(8) which conveniently
+# creates a tmux session where build output is shown while displaying an
+# informative status-line including package information, builder, build
+# phase and running build time.
+#
+# Default configuration resides under ${PREFIX}/etc/build-tools/config.pm. This
+# contains the default builder, among other options, to be passed to poudriere
+# which you can override by specifying the according command-line options.
+#
+# In order to run this script both tmux and poudriere must be installed.
+use File::Basename;
+use File::Temp;
+use Getopt::Std;
+use Term::ANSIColor;
+use strict;
+use warnings;
+no warnings "uninitialized";
+
+use vars qw($prefix $prog $author $revision $config $logfile %opts);
+#
+# Globals
+#
+$prefix = "/usr/local";
+$prog   = basename($0);
+$config = "$prefix/etc/build-tools/config.pm";
+
+#
+# Parse command-line arguments.
+#
+getopts( "p:b:t:d:s:aincuh", \%opts );
+
+#
+# Load default configuration settings.
+#
+if ( !-e $config ) { die_msg("Config '$config' does not exist."); }
+
+require $config;
+
+$author   = our $_author;
+$revision = our $_revision;
+
+#
+# Utlility functions.
+#
+sub tmux_new {
+    my $out = `tmux ls 2>/dev/null`;
+    if ( $out !~ /$_[0]/ || $out eq "" ) {
+        `tmux new -d -s $_[0]`;
+    }
+}
+sub tmux_key { `tmux send-key -t $_[0]:0 \"$_[1]\" Enter`; }
+sub tmux_opt { ( my $cmd = "tmux set-option -t $_[0] " ) .= $_[1]; `$cmd`; }
+
+sub strip_slash {
+    foreach (@_) { $_ =~ s,\/*$,,,; }
+}
+
+sub die_msg {
+    print( "$prog: ", color("black on_red"), "$_[0]", color("reset"), "\n" );
+    exit(1);
+}
+sub die_cfg    { die_msg("'$_[0]' has no value in the configuration."); }
+sub cfg_opt    { return $_[1] eq "" ? die_cfg( $_[0] ) : $_[2] || $_[1]; }
+sub check_prog { return `sh -c 'command -v $_[0]'`; }
+
+sub port_value {
+    my $val = `make -C $_[0] -V $_[1]`;
+    chomp($val);
+    return $val;
+}
+
+sub builder_check {
+    my ( $builder, @out, $found ) =
+      ( $_[0], split( " ", `poudriere jails -l` ), 0 );
+    splice @out, 0, 6;
+    foreach (@out) {
+        chomp();
+        if ( $builder eq $_ ) {
+            $found = 1;
+        }
+    }
+    if ( !$found ) {
+        die_msg(
+"builder '$builder' does not exist. Please check the configuration and try again."
+        );
+    }
+}
+
+sub builder_info {
+    my @info = split( /\n/, `poudriere jails -j $_[0] -i` );
+    foreach (@info) { $_ =~ s,^Jail\s\w+:\s+,,; }
+    return @info;
+}
+
+sub usage {
+    print STDOUT <<EOF;
+SYNOPSIS
+	$prog [-b builders] [-p package] [-d portdir] [-s script] [-t tree] 
+	      	[-achinu]
+
+DESCRIPTION
+	This script is a build wrapper around poudriere(8) which conveniently
+	creates a tmux session where build output is shown while displaying an
+	informative status-line including package information, builder, build 
+	phase and running build time.
+
+	author: 	$author
+	revision: 	$revision
+
+OPTIONS
+	-a 		Build all targets listed in the configuration,
+			useful for building on various architectures. 
+        -b builders	Comma-delimited list of Poudriere jails to use
+			as the building environment.
+        -c		Configure package before build (the equivalent of
+			running `make config` in the port directory).
+        -d dir		Directory containing the ports tree collection.
+        -h		Displays this help page.
+	-i		Enable interactive shell post-build.
+	-n		Dry-run, don't execute any commands, just output
+			them instead.
+        -p package	Resulting port to build.
+	-s script	Execute script post-build provided with a set of
+			environment variables: \$PORTNAME, \$PORTVERSION,
+			\$PORTMAINTAINER, \$BUILDER, \$BUILDERVERSION,
+			\$BUILDERARCH, \$BUILDTIME, \$PHASE, \$PORTDIR,
+			\$TREE, \$BUILDNAME. Values are retrospective of
+			their command-line option, configuration and
+			builder environment.
+        -t tree		Poudriere ports tree.
+        -u		Bulk build package.
+
+EXAMPLES
+	% $prog -p devel/gh -i
+		Attempt to build package 'devel/gh', automatically
+		attach to the tmux session and start an interactive
+		shell inside the builder once built (must connect
+		to the session).
+
+	% $prog -p devel/gh -d /path/to/ports -t custom-tree -u
+		Attempt to build package 'devel/gh', while overriding
+		the (-d) ports tree location and (-t) poudriere tree,
+		lastly (-u) making a ready-to-export package tree upon
+		post-build allowing you to pkg install 'devel/gh'
+		assuming the repository has been configured correctly.
+	
+	% $prog -h
+		Displays this helpful page.
+EOF
+    exit(1);
+}
+
+#
+# Check whether or not we have tmux and poudriere installed,
+# these are required to run the script.
+#
+check_prog("tmux")      || die_msg("tmux is not installed.");
+check_prog("poudriere") || die_msg("poudriere is not installed.");
+
+my @category =
+  qw ( accessibility arabic archivers astro audio base benchmarks biology cad chinese comms converters databases deskutils devel dns editors emulators finance french ftp games german graphics hebrew hungarian irc japanese java korean lang mail math misc multimedia net net-im net-mgmt net-p2p news polish ports-mgmt portuguese print russian science security shells sysutils textproc ukrainian vietnamese www x11 x11-clocks x11-drivers x11-fm x11-fonts x11-servers x11-themes x11-toolkits x11-wm );
+
+#
+# Configurable command-line options.
+#
+my ( $builder, $configure, $dir, $interactive, $tree, $bulk ) = (
+    cfg_opt( "builder",     our $_builder,     $opts{b} ),
+    cfg_opt( "configure",   our $_configure,   $opts{c} ),
+    cfg_opt( "dir",         our $_dir,         $opts{d} ),
+    cfg_opt( "interactive", our $_interactive, $opts{i} ),
+    cfg_opt( "tree",        our $_tree,        $opts{t} ),
+    cfg_opt( "bulk",        our $_bulk,        $opts{u} ),
+);
+
+my ( $all, $dry, $help, $port, $script ) =
+  ( $opts{a}, $opts{n}, $opts{h}, $opts{p}, $opts{s} );
+
+#
+# Start the build inside Poudriere.
+#
+sub build_port {
+    my ( $builder, $flags, $portdir ) = @_;
+    my $logfile = File::Temp->new( TEMPLATE => '/tmp/build.XXXXXX' );
+
+    my $command =
+      "poudriere $flags -j $builder -p $tree $port | tee " . $logfile->filename;
+
+    if ( $dry eq 1 ) {
+        print("$command\n");
+        return;
+    }
+
+    my ( $version, $maintainer ) = (
+        port_value( $portdir, "DISTVERSION" ),
+        port_value( $portdir, "MAINTAINER" )
+    );
+
+    my $status  = "Package: $port\@$version <$maintainer>";
+    my $session = $prog;
+
+    tmux_opt( $session, "pane-border-status top" );
+    tmux_opt( $session, "pane-active-border-style fg=brightyellow,bold" );
+    tmux_opt( $session, "pane-border-format \"$status | Phase: pending\"" );
+    tmux_opt( $session, "status off" );
+
+    tmux_key( $session, "clear" );
+    tmux_key( $session, $command );
+
+    $SIG{"INT"} = sub {
+        die_msg(
+"Job cancelled. Please manually check tmux session for any left-over builds."
+        );
+    };
+
+    sleep(2);
+
+    my @initial_data = split( /\t/, `poudriere status -j $builder -H` );
+    my ( $last_time, $last_phase, $last_build_name );
+
+    while (1) {
+        my @data = split( /\t/, `poudriere status -j $builder -H` );
+        my ( $current, $total, $time ) = ( $data[6], $data[5], $data[11] );
+        my $build = "Builder: $builder  Queue: $current/$total  Time: $time";
+        ( my $phase = $data[4] ) =~ s,:$port,,;
+     #
+     # Only until the package config dialog has closed is the
+     # output of `poudriere status` updated. Depending on whether
+     # the prior build failed, this can cause a false-positive in the
+     # phase check below. We can remedy this behavior  by comparing the
+     # previous build name with the current, and if they match, continue
+     # to the next iteration till it's finally updated.
+     #
+     # This is only for situations when the (-c) configuration flag is provided.
+     #
+        my ( $current_build, $prior_build ) = ( $data[3], $initial_data[3] );
+        if ( $configure eq 1
+            && ( $current_build eq $prior_build ) )
+        {
+            next;
+        }
+
+        open( LOG, $logfile->filename )
+          or die_msg( "Could not open log (" . $logfile->filename . ")." );
+
+        if ( $phase eq "sigint" || $phase =~ /failed/ ) {
+            $last_phase = $phase;
+            tmux_opt( $session, "pane-active-border-style fg=brightred,bold" );
+            tmux_opt( $session,
+                "pane-border-format \"$status | Phase: $phase | $build\"" );
+            print( color("black on_bright_red"),
+                "$phase", color("reset"), "\n" );
+            last;
+        }
+
+        if ( grep { /Unmounting file systems/ } <LOG> ) {
+            my ( $last_phase, $last_build_time ) = ( $phase, $current_build );
+            my @build_time = split( " ", qx/grep '^build time:' $logfile/ );
+            my $time       = $bulk eq 1 ? "" : "[$build_time[2]]";
+            $last_time = $build_time[2];
+            tmux_opt( $session,
+                "pane-active-border-style fg=brightgreen,bold" );
+            print( color("black on_bright_green"),
+                "done", color("reset"), " $time\n" );
+            last;
+        }
+
+        close(LOG);
+
+        tmux_opt( $session,
+            "pane-border-format \"$status | Phase: $phase | $build\"" );
+
+        sleep(0.65);
+    }
+
+    if (   defined $script
+        && -e $script
+        && !( $last_phase eq "sigint" || $last_phase =~ /failed/ ) )
+    {
+        my @builder_data = builder_info($builder);
+        my %script_env   = (
+
+            # Port
+            PORTNAME       => $port,
+            PORTVERSION    => $version,
+            PORTMAINTAINER => $maintainer,
+
+            # Builder
+            BUILDER        => $builder,
+            BUILDERVERSION => $builder_data[1],
+            BUILDERARCH    => $builder_data[2],
+
+            # Misc
+            BUILDTIME => $last_time,
+            PHASE     => $last_phase,
+            PORTDIR   => $portdir,
+            TREE      => $tree,
+            BUILDNAME => $last_build_name,
+        );
+
+        foreach ( sort keys %script_env ) {
+            $ENV{$_} = $script_env{$_};
+        }
+
+        system($script);
+    }
+}
+
+sub build_multi_ports {
+    my @builders = @{ (shift) };
+    my ( $flags, $portdir ) = @_;
+    foreach (@builders) { builder_check($_); }
+    my ( $current, $total ) = ( 1, scalar @builders );
+    my ( $target,  $build ) = (
+        ( $total > 1 ? "targets"       : "target" ),
+        ( $bulk eq 1 ? "Bulk building" : "Building" )
+    );
+    printf( "======< %s %s%s%s on %s%s %s%s >======\n",
+        $build, color("bright_blue"), $port, color("reset"),
+        color("bright_magenta"), $total, $target, color("reset") );
+    foreach ( sort @builders ) {
+        printf( "=> [%s/%s] %s%-20s%s... ",
+            $current, $total, color("bright_magenta"), $_, color("reset") );
+        build_port( $_, $flags, $portdir );
+        $current++;
+    }
+}
+
+MAIN: {
+    if ( !defined $port || $port eq "" || defined $help ) { usage(); }
+
+    strip_slash( $dir, $port );
+
+    if ( !-d "$dir" ) { die_msg("Ports tree '$dir' does not exist."); }
+
+    foreach (@category) {
+        if ( $port eq $_ ) {
+            die_msg("'$port' is a category.");
+        }
+    }
+
+    my $portdir = "$dir/$port";
+
+    if ( !-d "$portdir" ) { die_msg("Port '$port' does not exist."); }
+
+    my $flags = "testport";
+
+    if ( $interactive eq 1 ) { $flags .= ' -i'; }
+    if ( $configure eq 1 )   { $flags .= ' -c'; }
+    if ( $bulk eq 1 )        { $flags =~ s,testport,bulk,; }
+
+    if ( $dry eq 0 ) {
+        tmux_new($prog);
+    }
+
+    my @builders = split( ",", $builder );
+    if ( defined $all || ( scalar @builders ) > 1 ) {
+        my @selected =
+          ( scalar @builders ) > 1 ? @builders : our @_all_builders;
+        build_multi_ports( \@selected, $flags, $portdir );
+    }
+    else {
+        builder_check($builder);
+        my $build = ( $bulk eq 1 ? "Bulk building" : "Building" );
+        printf( "======< %s %s%s%s on %s1 target%s >======\n",
+            $build, color("bright_blue"), $port, color("reset"),
+            color("bright_magenta"), color("reset") );
+        printf( "=> %s%-20s%s",
+            color("bright_magenta"), $builder, color("reset") );
+        build_port( $builder, $flags, $portdir );
+    }
+}
