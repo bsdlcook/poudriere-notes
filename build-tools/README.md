@@ -17,19 +17,19 @@ little easier. Refer to the [manpage](#manpage) and
 ├── BSDmakefile - Installation Makefile
 ├── build-pkg   - Poudriere build-script
 ├── config.pm   - Configuration module
-└── README.md   - Documation
+└── README.md   - Documentation
 ```
 
 ## Configuration
 
-Before properly using the scripts in conjuction with Poudriere it's assumed
+Before properly using the scripts in conjunction with Poudriere, it's assumed
 everything is ready to go. If not, refer to the [getting started guide](README.md).
 
 You will notice a [perl module](config.pm) that defines the default
 builder, ports tree and other default values for commands. Update this
-accordingly to your Poudriere settings, the variable names are self-explanatory.
+accordingly to your Poudriere settings. The variable names are self-explanatory.
 
-Command-specific default values tie-in with their acccording command, so there
+Command-specific default values tie-in with their according to command, so there
 is no wrong or right value. Update them to your liking.
 
 ### Installation
