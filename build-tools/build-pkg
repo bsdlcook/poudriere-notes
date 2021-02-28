@@ -151,7 +151,7 @@ EXAMPLES
 	% $prog -h
 		Displays this helpful page.
 EOF
-    exit(1);
+    exit(0);
 }
 
 #
