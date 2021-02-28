@@ -1,3 +1,13 @@
+#
+#
+# The user-driven targets are:
+#
+# install	- Install build-tools, scripts and configuration.
+# deinstall	- Removes all files installed from the "install" target.
+# format	- Formats all perl scripts with perltidy.
+# manpage	- Outputs manpage section of the README.
+#
+#
 PROG?=		build-tools
 CONF=		config.pm
 SCRIPT?=	script
@@ -9,11 +19,13 @@ SBIN=		${PREFIX}/sbin
 CFG=		${ETC}/${PROG}
 SHARE=		${PREFIX}/share/${PROG}
 
-default: 
-	@echo "Targets: install, deinstall, format"
+default: .PHONY
+	@echo
+	@echo "Targets: install, deinstall, format, manpage"
+	@echo
 
 PERMS?=		500
-install:
+install: .PHONY
 .for DIR in ${CFG} ${SHARE}
 	mkdir -p ${DIR}
 .endfor
@@ -23,7 +35,7 @@ install:
 	install -m ${PERMS} ${BIN} ${SBIN}
 .endfor
 
-deinstall:
+deinstall: .PHONY
 .for DIR in ${CFG} ${SHARE}
 	rm -rf ${DIR}
 .endfor
@@ -31,13 +43,30 @@ deinstall:
 	rm -f ${SBIN}/${BIN}
 .endfor
 
-format: 
-.if ! exists(${PREFIX}/bin/perltidy)
-.error "perltidy not found: pkg install p5-Test-PerlTidy"
+PERLTIDY=	${PREFIX}/bin/perltidy
+format: .PHONY
+.if !exists(${PERLTIDY})
+	@echo
+	@echo "WARNING: perltidy not installed.  Install required package"
+	@echo "by running pkg install p5-Test-PerlTidy."
+	@echo
+	@false
 .endif
 .for BIN in ${SRC} ${CONF}
-	perltidy -b ${BIN}
+	${PERLTIDY} -b ${BIN}
 	@rm -f ${BIN}.bak ${BIN}.tdy
 .endfor
 
-.PHONY: default install deinstall format
+BUILDPKG=	${SBIN}/build-pkg
+manpage: .PHONY
+.if !exists(${BUILDPKG})
+	@echo
+	@echo "WARNING: build-pkg not installed.  Install by running"
+	@echo "make install."
+	@echo
+	@false
+.endif
+	@echo "## Manpage"
+	@echo "\`\`\`"
+	@${BUILDPKG} -h
+	@echo "\`\`\`"
