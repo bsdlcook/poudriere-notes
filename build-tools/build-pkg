@@ -99,7 +99,7 @@ sub builder_info {
 sub usage {
     print STDOUT <<EOF;
 SYNOPSIS
-	$prog [-b builders] [-p package] [-d portdir] [-s script] [-t tree] 
+	$prog [-b builders] [-p packages] [-d portdir] [-s script] [-t tree]
 	      	[-achinu]
 
 DESCRIPTION
@@ -123,7 +123,7 @@ OPTIONS
 	-i		Enable interactive shell post-build.
 	-n		Dry-run, don't execute any commands, just output
 			them instead.
-        -p package	Resulting port to build.
+        -p packages	Comma-delimited list of resulting ports to build.
 	-s script	Execute script post-build provided with a set of
 			environment variables: \$PORTNAME, \$PORTVERSION,
 			\$PORTMAINTAINER, \$BUILDER, \$BUILDERVERSION,
@@ -178,6 +178,25 @@ my ( $builder, $configure, $dir, $interactive, $tree, $bulk ) = (
 
 my ( $all, $dry, $help, $port, $script ) =
   ( $opts{a}, $opts{n}, $opts{h}, $opts{p}, $opts{s} );
+
+sub port_check {
+    my @ports = @{ (shift) };
+    my $temp;
+    foreach (@ports) {
+        $temp = $_;
+        strip_slash( $dir, $temp );
+
+        if ( !-d "$dir" ) { die_msg("Ports tree '$dir' does not exist."); }
+
+        foreach (@category) {
+            if ( $temp eq $_ ) {
+                die_msg("'$temp' is a category.");
+            }
+        }
+
+        if ( !-d "$dir/$temp" ) { die_msg("Port '$temp' does not exist."); }
+    }
+}
 
 #
 # Start the build inside Poudriere.
@@ -332,44 +351,38 @@ sub build_multi_ports {
 MAIN: {
     if ( !defined $port || $port eq "" || defined $help ) { usage(); }
 
-    strip_slash( $dir, $port );
+    my @ports = split( ",", $port );
+    port_check( \@ports );
 
-    if ( !-d "$dir" ) { die_msg("Ports tree '$dir' does not exist."); }
+    foreach (@ports) {
+        $port = $_;
+        my $portdir = "$dir/$port";
+        my $flags   = "testport";
 
-    foreach (@category) {
-        if ( $port eq $_ ) {
-            die_msg("'$port' is a category.");
+        if ( $interactive eq 1 ) { $flags .= ' -i'; }
+        if ( $configure eq 1 )   { $flags .= ' -c'; }
+        if ( $bulk eq 1 )        { $flags =~ s,testport,bulk,; }
+
+        if ( !defined $dry ) {
+            tmux_new($prog);
         }
-    }
 
-    my $portdir = "$dir/$port";
+        my @builders = split( ",", $builder );
+        if ( defined $all || ( scalar @builders ) > 1 ) {
+            my @selected =
+              ( scalar @builders ) > 1 ? @builders : our @_all_builders;
+            build_multi_ports( \@selected, $flags, $portdir );
+        }
+        else {
+            builder_check($builder);
+            my $build = ( $bulk eq 1 ? "Bulk building" : "Building" );
+            printf( "======< %s %s%s%s on %s1 target%s >======\n",
+                $build, color("bright_blue"), $port, color("reset"),
+                color("bright_magenta"), color("reset") );
+            printf( "=> %s%-20s%s",
+                color("bright_magenta"), $builder, color("reset") );
+            build_port( $builder, $flags, $portdir );
+        }
 
-    if ( !-d "$portdir" ) { die_msg("Port '$port' does not exist."); }
-
-    my $flags = "testport";
-
-    if ( $interactive eq 1 ) { $flags .= ' -i'; }
-    if ( $configure eq 1 )   { $flags .= ' -c'; }
-    if ( $bulk eq 1 )        { $flags =~ s,testport,bulk,; }
-
-    if ( !defined $dry ) {
-        tmux_new($prog);
-    }
-
-    my @builders = split( ",", $builder );
-    if ( defined $all || ( scalar @builders ) > 1 ) {
-        my @selected =
-          ( scalar @builders ) > 1 ? @builders : our @_all_builders;
-        build_multi_ports( \@selected, $flags, $portdir );
-    }
-    else {
-        builder_check($builder);
-        my $build = ( $bulk eq 1 ? "Bulk building" : "Building" );
-        printf( "======< %s %s%s%s on %s1 target%s >======\n",
-            $build, color("bright_blue"), $port, color("reset"),
-            color("bright_magenta"), color("reset") );
-        printf( "=> %s%-20s%s",
-            color("bright_magenta"), $builder, color("reset") );
-        build_port( $builder, $flags, $portdir );
     }
 }

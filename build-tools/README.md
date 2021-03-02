@@ -42,11 +42,10 @@ install -m 500 script/* /usr/local/share/build-tools
 install -m 500 config.pm /usr/local/etc/build-tools
 install -m 500 build-pkg /usr/local/sbin
 ```
-
 ## Manpage
 ```
 SYNOPSIS
-	build-pkg [-b builders] [-p package] [-d portdir] [-s script] [-t tree] 
+	build-pkg [-b builders] [-p packages] [-d portdir] [-s script] [-t tree]
 	      	[-achinu]
 
 DESCRIPTION
@@ -56,7 +55,7 @@ DESCRIPTION
 	phase and running build time.
 
 	author: 	Lewis Cook <lcook@FreeBSD.org>
-	revision: 	1.15
+	revision: 	1.16
 
 OPTIONS
 	-a 		Build all targets listed in the configuration,
@@ -70,7 +69,7 @@ OPTIONS
 	-i		Enable interactive shell post-build.
 	-n		Dry-run, don't execute any commands, just output
 			them instead.
-        -p package	Resulting port to build.
+        -p packages	Comma-delimited list of resulting ports to build.
 	-s script	Execute script post-build provided with a set of
 			environment variables: $PORTNAME, $PORTVERSION,
 			$PORTMAINTAINER, $BUILDER, $BUILDERVERSION,
@@ -97,5 +96,4 @@ EXAMPLES
 	
 	% build-pkg -h
 		Displays this helpful page.
-
 ```
