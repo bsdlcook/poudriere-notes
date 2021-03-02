@@ -352,7 +352,7 @@ MAIN: {
     if ( $configure eq 1 )   { $flags .= ' -c'; }
     if ( $bulk eq 1 )        { $flags =~ s,testport,bulk,; }
 
-    if ( $dry eq 0 ) {
+    if ( !$dry ) {
         tmux_new($prog);
     }
 
