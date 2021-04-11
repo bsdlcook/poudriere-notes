@@ -42,11 +42,12 @@ install -m 500 script/* /usr/local/share/build-tools
 install -m 500 config.pm /usr/local/etc/build-tools
 install -m 500 build-pkg /usr/local/sbin
 ```
+
 ## Manpage
 ```
 SYNOPSIS
 	build-pkg [-b builders] [-p packages] [-d portdir] [-s script] [-t tree]
-	      	[-achinu]
+		[-achinuv]
 
 DESCRIPTION
 	This script is a build wrapper around poudriere(8) which conveniently
@@ -55,7 +56,7 @@ DESCRIPTION
 	phase and running build time.
 
 	author: 	Lewis Cook <lcook@FreeBSD.org>
-	revision: 	1.16
+	revision: 	1.20
 
 OPTIONS
 	-a 		Build all targets listed in the configuration,
@@ -79,6 +80,8 @@ OPTIONS
 			builder environment.
         -t tree		Poudriere ports tree.
         -u		Bulk build package.
+	-v		Enable verbose mode.  Prints the running
+			build phase.
 
 EXAMPLES
 	% build-pkg -p devel/gh -i

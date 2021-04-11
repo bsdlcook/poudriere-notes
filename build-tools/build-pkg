@@ -16,6 +16,7 @@ use File::Basename;
 use File::Temp;
 use Getopt::Std;
 use Term::ANSIColor;
+use POSIX qw(strftime);
 use strict;
 use warnings;
 no warnings "uninitialized";
@@ -31,7 +32,7 @@ $config = "$prefix/etc/build-tools/config.pm";
 #
 # Parse command-line arguments.
 #
-getopts( "p:b:t:d:s:aincuh", \%opts );
+getopts( "p:b:t:d:s:aincuhv", \%opts );
 
 #
 # Load default configuration settings.
@@ -100,7 +101,7 @@ sub usage {
     print STDOUT <<EOF;
 SYNOPSIS
 	$prog [-b builders] [-p packages] [-d portdir] [-s script] [-t tree]
-	      	[-achinu]
+		[-achinuv]
 
 DESCRIPTION
 	This script is a build wrapper around poudriere(8) which conveniently
@@ -133,6 +134,8 @@ OPTIONS
 			builder environment.
         -t tree		Poudriere ports tree.
         -u		Bulk build package.
+	-v		Enable verbose mode.  Prints the running
+			build phase.
 
 EXAMPLES
 	% $prog -p devel/gh -i
@@ -176,8 +179,8 @@ my ( $builder, $configure, $dir, $interactive, $tree, $bulk ) = (
     cfg_opt( "bulk",        our $_bulk,        $opts{u} ),
 );
 
-my ( $all, $dry, $help, $port, $script ) =
-  ( $opts{a}, $opts{n}, $opts{h}, $opts{p}, $opts{s} );
+my ( $all, $dry, $help, $port, $verbose, $script ) =
+  ( $opts{a}, $opts{n}, $opts{h}, $opts{p}, $opts{v}, $opts{s} );
 
 sub port_check {
     my @ports = @{ (shift) };
@@ -203,10 +206,22 @@ sub port_check {
 #
 sub build_port {
     my ( $builder, $flags, $portdir ) = @_;
+    builder_check($builder);
     my $logfile = File::Temp->new( TEMPLATE => '/tmp/build.XXXXXX' );
 
     my $command =
       "poudriere $flags -j $builder -p $tree $port | tee " . $logfile->filename;
+
+    my $time  = strftime( "%H:%M:%S", localtime() );
+    my $build = ( $bulk eq 1 ? "Bulk building" : "Building" );
+    printf(
+        "== %s => %s [%s%s@%s%s] [%s%s%s] ==\n",
+        $time,                                 $build,
+        color("bright_blue"),                  $port,
+        port_value( $portdir, "DISTVERSION" ), color("reset"),
+        color("bright_magenta"),               $builder,
+        color("reset")
+    );
 
     if ( $dry eq 1 ) {
         print("$command\n");
@@ -240,6 +255,11 @@ sub build_port {
     my @initial_data = split( /\t/, `poudriere status -j $builder -H` );
     my ( $last_time, $last_phase, $last_build_name );
 
+    if ( defined $verbose ) {
+        printf( "*> Enabled %sverbose mode%s\n",
+            color("bright_green"), color("reset") );
+    }
+
     while (1) {
         my @data = split( /\t/, `poudriere status -j $builder -H` );
         my ( $current, $total, $time ) = ( $data[6], $data[5], $data[11] );
@@ -270,7 +290,7 @@ sub build_port {
             tmux_opt( $session, "pane-active-border-style fg=brightred,bold" );
             tmux_opt( $session,
                 "pane-border-format \"$status | Phase: $phase | $build\"" );
-            print( color("black on_bright_red"),
+            print( "-> ", color("black on_bright_red"),
                 "$phase", color("reset"), "\n" );
             last;
         }
@@ -282,7 +302,7 @@ sub build_port {
             $last_time = $build_time[2];
             tmux_opt( $session,
                 "pane-active-border-style fg=brightgreen,bold" );
-            print( color("black on_bright_green"),
+            print( "-> ", color("black on_bright_green"),
                 "done", color("reset"), " $time\n" );
             last;
         }
@@ -292,6 +312,15 @@ sub build_port {
         tmux_opt( $session,
             "pane-border-format \"$status | Phase: $phase | $build\"" );
 
+        if (   defined $verbose
+            && $phase ne "done"
+            && $phase ne $last_phase )
+        {
+            printf( "%s->%s %s\n",
+                color("bright_green"), color("reset"), $phase );
+        }
+
+        $last_phase = $phase;
         sleep(0.65);
     }
 
@@ -331,20 +360,21 @@ sub build_port {
 sub build_multi_ports {
     my @builders = @{ (shift) };
     my ( $flags, $portdir ) = @_;
-    foreach (@builders) { builder_check($_); }
-    my ( $current, $total ) = ( 1, scalar @builders );
-    my ( $target,  $build ) = (
-        ( $total > 1 ? "targets"       : "target" ),
-        ( $bulk eq 1 ? "Bulk building" : "Building" )
+    my $total = ( scalar @builders );
+    my ( $target, $build ) = (
+        ( $total > 1 ? "targets"    : "target" ),
+        ( $bulk eq 1 ? "bulk build" : "build" )
     );
-    printf( "======< %s %s%s%s on %s%s %s%s >======\n",
-        $build, color("bright_blue"), $port, color("reset"),
-        color("bright_magenta"), $total, $target, color("reset") );
+    printf( "*> Starting mass %s on %s%s%s %s%s:\n",
+        $build, color("bright_blue"), color("bright_magenta"), $total, $target,
+        color("reset") );
     foreach ( sort @builders ) {
-        printf( "=> [%s/%s] %s%-20s%s... ",
-            $current, $total, color("bright_magenta"), $_, color("reset") );
+        printf( "   %s%s%s\n", color("bright_magenta"), $_, color("reset") );
+    }
+    printf("\n");
+    foreach ( sort @builders ) {
         build_port( $_, $flags, $portdir );
-        $current++;
+        printf("\n");
     }
 }
 
@@ -374,15 +404,7 @@ MAIN: {
             build_multi_ports( \@selected, $flags, $portdir );
         }
         else {
-            builder_check($builder);
-            my $build = ( $bulk eq 1 ? "Bulk building" : "Building" );
-            printf( "======< %s %s%s%s on %s1 target%s >======\n",
-                $build, color("bright_blue"), $port, color("reset"),
-                color("bright_magenta"), color("reset") );
-            printf( "=> %s%-20s%s",
-                color("bright_magenta"), $builder, color("reset") );
             build_port( $builder, $flags, $portdir );
         }
-
     }
 }
