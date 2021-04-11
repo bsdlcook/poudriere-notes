@@ -48,15 +48,15 @@ PRIORITY_BOOST="llvm* rust* gcc* chromium*"
 ### Poudriere jails
 
 To easily distinguish between a jails userland/version, use the following format for naming:
-[**BRANCH**]-[**MAJOR**/**MINOR**]-[**ARCH**]. For example, a machine on 12.2-RELEASE amd64,
-**releng-122-amd64** would suffice. 13.0-STABLE i386, on the other hand would yield **stable-130-i386**
+[**BRANCH**]-[**MAJOR**/**MINOR**]-[**ARCH**]. For example, a machine on 13.0-RELEASE amd64,
+**releng-130-amd64** would suffice. 14.0-STABLE i386, on the other hand would yield **stable-140-i386**
 and so forth. It really is just semantics, so whatever works for you; however, bare in mind the
 jail cannot have a greater version than the host system. Otherwise, you'll run into unexpected
 side-effects as a result of the kernel/userland version mismatch.
 
 ```sh
-# poudriere jail -c -j releng-122-amd64 -v 12.2-RELEASE -a amd64 # 12.2-RELEASE amd64
-# poudriere jail -c -j stable-130-i386 -v 13.0-STABLE -a i386 # 13.0-STABLE i386
+# poudriere jail -c -j releng-130-amd64 -v 13.0-RELEASE -a amd64 # 13.0-RELEASE amd64
+# poudriere jail -c -j stable-140-i386 -v 14.0-STABLE -a i386 # 14.0-STABLE i386
 ```
 
 *Only explicitly pass the -a (architecture) flag when creating jails that are different from the hosts architecture.*
@@ -71,15 +71,15 @@ You have one of two options when building one/many port(s).
 For a more detailed clarification please refer to **poudriere(8)**.
 
 ```sh
-# poudriere testport -j releng-122-amd64 devel/gh
+# poudriere testport -j releng-130-amd64 devel/gh
 ```
 
-Using the examples above, this will build the port **devel/gh** using the jail **releng-122-amd64**
-(12.2-RELEASE amd64) using the **default** tree. You can also optionally pass the -i (interactive)
+Using the examples above, this will build the port **devel/gh** using the jail **releng-130-amd64**
+(13.0-RELEASE amd64) using the **default** tree. You can also optionally pass the -i (interactive)
 flag that drops you to a shell inside the jail post-build, allowing you to test the port freely.
 
 ```sh
-# poudriere bulk -j releng-122-amd64 devel/gh audio/spotify-tui
+# poudriere bulk -j releng-130-amd64 devel/gh audio/spotify-tui
 ```
 This will build both **devel/gh** and **audio/spotify-tui**, committing those packages to the custom
 package repository for installation. There is no limit on how many ports you pass as arguments.
