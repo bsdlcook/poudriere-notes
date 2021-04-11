@@ -42,7 +42,7 @@ PRIORITY_BOOST="llvm* rust* gcc* chromium*"
 ### Ports repository
 
 ```sh
-# poudriere ports -c -m svn+https
+# poudriere ports -c -m git -B main
 ```
 
 ### Poudriere jails
