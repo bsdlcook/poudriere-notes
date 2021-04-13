@@ -167,7 +167,7 @@ memcached_only = true
 Run the following:
 
 ```sh
-# pkg install cache-memcached-static
+# pkg install ccache-memcached-static
 # sysrc memcached_enable=YES
 # sysrc memcached_flags="-l localhost -m $mb" # Replace $mb with the amount of megabytes you want to allocate
 # service memcached start
