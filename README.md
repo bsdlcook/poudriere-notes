@@ -17,7 +17,7 @@ self-documentation and highly subjective to my needs.
 ### Installing Poudriere
 
 ```sh
-# pkg install poudriere
+# pkg install -y poudriere
 ```
 
 ### Configuration
@@ -96,7 +96,7 @@ So when recompiling an application, that stored cache can be used instead, oppos
 for no reason or merit.
 
 ```sh
-# pkg install ccache
+# pkg install -y ccache
 # mkdir -p /var/cache/ccache
 ```
 
@@ -167,7 +167,7 @@ memcached_only = true
 Run the following:
 
 ```sh
-# pkg install ccache-memcached-static
+# pkg install -y ccache-memcached-static memcached
 # sysrc memcached_enable=YES
 # sysrc memcached_flags="-l localhost -m $mb" # Replace $mb with the amount of megabytes you want to allocate
 # service memcached start
