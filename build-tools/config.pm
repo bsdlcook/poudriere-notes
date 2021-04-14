@@ -7,12 +7,12 @@
 #
 # Used for the (-a) all flag.
 #
-our @_all_builders = qw(releng-122-amd64 releng-122-i386);
+our @_all_builders = qw(releng-130-amd64 releng-130-i386 releng-122-amd64 releng-122-i386 releng-114-amd64 releng-114-i386);
 
 #
 # Default arguments.
 #
-our $_builder = "releng-122-amd64";
+our $_builder = "releng-130-amd64";
 our $_tree    = "default";
 our $_dir     = "/usr/local/poudriere/ports/default";
 
