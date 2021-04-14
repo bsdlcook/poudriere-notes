@@ -28,6 +28,6 @@ our $_tmux        = 0;
 # Misc.
 #
 our $_author   = "Lewis Cook <lcook\@FreeBSD.org>";
-our $_revision = "1.20";
+our $_revision = "1.21";
 
 1;

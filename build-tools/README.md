@@ -56,7 +56,7 @@ DESCRIPTION
 	phase and running build time.
 
 	author: 	Lewis Cook <lcook@FreeBSD.org>
-	revision: 	1.20
+	revision: 	1.21
 
 OPTIONS
 	-a 		Build all targets listed in the configuration,

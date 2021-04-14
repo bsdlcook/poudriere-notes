@@ -288,11 +288,12 @@ sub build_port {
 
         open( LOG, $logfile->filename )
           or die_msg( "Could not open log (" . $logfile->filename . ")." );
+        my @log = <LOG>;
 
         # Check if we cancelled the job or encountered a build error.
         if (   $phase eq "sigint"
             || $phase =~ /failed/
-            || grep { /build failure/ } <LOG> )
+            || grep { /build failure/ } @log )
         {
             $last_phase = $phase;
             tmux_opt( $session, "pane-active-border-style fg=brightred,bold" );
@@ -306,7 +307,7 @@ sub build_port {
      # When the file system inside the jail has been unmounted, this indicates
      # that the build has finished - regardless if successful or not.  The check
      # above _should_ catch anything before that.
-        if ( grep { /Unmounting file systems/ } <LOG> ) {
+        if ( grep { /Unmounting file systems/ } @log ) {
             my ( $last_phase, $last_build_time ) = ( $phase, $current_build );
             my @build_time = split( " ", qx/grep '^build time:' $logfile/ );
             my $time       = $bulk eq 1 ? "" : "[$build_time[2]]";
