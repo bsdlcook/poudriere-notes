@@ -24,7 +24,7 @@ default: .PHONY
 	@echo "Targets: install, deinstall, format, manpage"
 	@echo
 
-PERMS?=		500
+PERMS?=		755
 install: .PHONY
 .for DIR in ${CFG} ${SHARE}
 	mkdir -p ${DIR}
