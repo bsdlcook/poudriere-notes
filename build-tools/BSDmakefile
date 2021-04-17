@@ -6,12 +6,14 @@
 # deinstall	- Removes all files installed from the "install" target.
 # format	- Formats all perl scripts with perltidy.
 # manpage	- Outputs manpage section of the README.
+# completions	- Install (fish) shell completions.
 #
 #
 PROG?=		build-tools
 CONF=		config.pm
 SCRIPT?=	script
 SRC=		build-pkg
+COMPLETIONS=	completions
 
 PREFIX?=	/usr/local
 ETC=		${PREFIX}/etc
@@ -70,3 +72,8 @@ manpage: .PHONY
 	@echo "\`\`\`"
 	@${BUILDPKG} -h
 	@echo "\`\`\`"
+
+FISHDIR=	${PREFIX}/share/fish/completions
+completions: .PHONY
+	mkdir -p ${FISHDIR}
+	install -m ${PERMS} ${COMPLETIONS}/build-pkg.fish ${FISHDIR}
