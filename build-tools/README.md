@@ -16,6 +16,8 @@ little easier. Refer to the [manpage](#manpage) and
 │   └── gen-summary - Generates a summary ready-for Phabricator
 ├── BSDmakefile - Installation Makefile
 ├── build-pkg   - Poudriere build-script
+├── completions - Shell completions
+│   └── build-pkg.fish
 ├── config.pm   - Configuration module
 └── README.md   - Documentation
 ```
