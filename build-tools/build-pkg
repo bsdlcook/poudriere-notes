@@ -297,7 +297,7 @@ sub build_port {
         {
             tmux_opt( $session, "pane-active-border-style fg=brightred,bold" );
             tmux_opt( $session,
-                "pane-border-format \"$status | Phase: $phase | $build\"" );
+                "pane-border-format \"$status | Phase: $last_phase | $build\"" );
             print( "-> ", color("black on_bright_red"),
                 "$last_phase", color("reset"), "\n" );
             last;
