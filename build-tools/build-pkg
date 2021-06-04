@@ -295,12 +295,11 @@ sub build_port {
             || $phase =~ /failed/
             || grep { /build failure/ } @log )
         {
-            $last_phase = $phase;
             tmux_opt( $session, "pane-active-border-style fg=brightred,bold" );
             tmux_opt( $session,
                 "pane-border-format \"$status | Phase: $phase | $build\"" );
             print( "-> ", color("black on_bright_red"),
-                "$phase", color("reset"), "\n" );
+                "$last_phase", color("reset"), "\n" );
             last;
         }
 
